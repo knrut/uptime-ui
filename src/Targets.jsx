@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 
-export default function Targets({ me, onLogout }) {
+export default function Targets() {
     const [items, setItems] = useState([]);
     const [err, setErr] = useState(null);
 
@@ -51,14 +51,6 @@ export default function Targets({ me, onLogout }) {
 
     return (
         <div style={{ maxWidth: 900, margin: "30px auto", padding: 20 }}>
-            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h2>Uptime Monitor</h2>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <span>Zalogowany: <b>{me.username}</b></span>
-                    <button onClick={onLogout}>Logout</button>
-                </div>
-            </header>
-
             <section style={{ marginTop: 20, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
                 <h3>Dodaj target</h3>
                 <form onSubmit={create} style={{ display: "grid", gap: 10 }}>

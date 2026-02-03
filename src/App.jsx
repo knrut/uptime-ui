@@ -44,7 +44,7 @@ export default function App() {
                 <Routes>
                     <Route element={<Layout me={me} onLogout={logout} />}>
                         <Route path="/" element={<Navigate to="/targets" replace />} />
-                        <Route path="/targets" element={<Targets me={me} onLogout={logout} />} />
+                        <Route path="/targets" element={<Targets />} />
                         <Route path="/results" element={<Results />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="*" element={<Navigate to="/targets" replace />} />

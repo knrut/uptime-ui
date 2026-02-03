@@ -7,7 +7,7 @@ export default function Layout({ me, onLogout }) {
             <aside className="sidebar">
                 <div className="brand">
                     <div className="brand-title">Uptime Monitor</div>
-                    <div className="brand-sub">Admin panel</div>
+                    <div className="brand-sub">User panel</div>
                 </div>
 
                 <nav className="nav">
