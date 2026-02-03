@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
+
 import Login from "./Login";
+import Layout from "./Layout";
 import Targets from "./Targets";
+import Results from "./Results";
+import Settings from "./Settings";
 
 export default function App() {
     const [me, setMe] = useState(null);
@@ -18,10 +23,34 @@ export default function App() {
         }
     }
 
-    useEffect(() => { refreshMe(); }, []);
+    useEffect(() => {
+        refreshMe();
+    }, []);
+
+    async function logout() {
+        await api("/auth/logout", { method: "POST" });
+        await refreshMe();
+    }
 
     if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
-    if (!me) return <Login onLoggedIn={refreshMe} />;
 
-    return <Targets me={me} onLogout={async () => { await api("/auth/logout", { method: "POST" }); await refreshMe(); }} />;
+    return (
+        <BrowserRouter>
+            {!me ? (
+                <Routes>
+                    <Route path="*" element={<Login onLoggedIn={refreshMe} />} />
+                </Routes>
+            ) : (
+                <Routes>
+                    <Route element={<Layout me={me} onLogout={logout} />}>
+                        <Route path="/" element={<Navigate to="/targets" replace />} />
+                        <Route path="/targets" element={<Targets me={me} onLogout={logout} />} />
+                        <Route path="/results" element={<Results />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="*" element={<Navigate to="/targets" replace />} />
+                    </Route>
+                </Routes>
+            )}
+        </BrowserRouter>
+    );
 }
