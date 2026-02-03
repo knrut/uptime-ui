@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "./api";
+import "./Login.css";
 
 export default function Login({ onLoggedIn }) {
     const [username, setUsername] = useState("admin");
@@ -21,14 +22,29 @@ export default function Login({ onLoggedIn }) {
     }
 
     return (
-        <div style={{ maxWidth: 360, margin: "80px auto", padding: 20, border: "1px solid #ddd", borderRadius: 12 }}>
-            <h2>Admin login</h2>
-            <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
-                <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" />
-                <button type="submit">Login</button>
-                {err && <div style={{ color: "crimson" }}>{err}</div>}
-            </form>
+        <div className="login-page">
+            <div className="login-card">
+                <h1>Uptime Monitor</h1>
+
+                <form onSubmit={submit}>
+                    <input
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Username"
+                    />
+
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                    />
+
+                    <button type="submit">Login</button>
+
+                    {err && <div className="login-error">{err}</div>}
+                </form>
+            </div>
         </div>
     );
 }
