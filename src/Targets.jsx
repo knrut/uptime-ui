@@ -60,7 +60,7 @@ export default function Targets() {
     }
 
     async function unfreeze(id) {
-        if (!confirm("Unfreeze target?")) return;
+        if (!confirm("Activate target?")) return;
         try {
             await api(`/api/targets/${id}/unfreeze`, { method: "PUT" });
             await load();
@@ -105,12 +105,12 @@ export default function Targets() {
                                 <button
                                     onClick={() => t.enabled ? freeze(t.id) : unfreeze(t.id)}
                                     style={{
-                                        background: t.enabled ? "#fff" : "#dc2626",
-                                        color: t.enabled ? "#111" : "#fff",
-                                        border: "1px solid #e5e5e5"
+                                        background: t.enabled ? "#16a34a" : "#dc2626",
+                                        color: "#fff",
+                                        border: "none"
                                     }}
                                 >
-                                    {t.enabled ? "Freeze" : "Frozen"}
+                                    {t.enabled ? "Active" : "Frozen"}
                                 </button>
                                 <button onClick={() => del(t.id)}>Delete</button>
                             </div>
