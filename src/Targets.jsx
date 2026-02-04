@@ -49,6 +49,16 @@ export default function Targets() {
         }
     }
 
+    async function freeze(id) {
+        if (!confirm("Freeze target?")) return;
+        try {
+            await api(`/api/targets/${id}/freeze`, { method: "PUT" });
+            await load();
+        } catch (e) {
+            setErr(e.message);
+        }
+    }
+
     return (
         <div style={{ maxWidth: 900, margin: "30px auto", padding: 20 }}>
             <section style={{ marginTop: 20, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
@@ -81,7 +91,10 @@ export default function Targets() {
                                 <div style={{ opacity: 0.8 }}>{t.url}</div>
                                 <div style={{ opacity: 0.8 }}>enabled: {String(t.enabled)} • every: {t.checkEverySec}s</div>
                             </div>
-                            <button onClick={() => del(t.id)}>Delete</button>
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <button onClick={() => freeze(t.id)}>Freeze</button>
+                                <button onClick={() => del(t.id)}>Delete</button>
+                            </div>
                         </div>
                     ))}
                 </div>
