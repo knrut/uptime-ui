@@ -10,10 +10,13 @@ export default function Targets() {
     const [enabled, setEnabled] = useState(true);
     const [checkEverySec, setCheckEverySec] = useState(30);
 
+    // inline edit
+    const [editingId, setEditingId] = useState(null);
+    const [draft, setDraft] = useState({ name: "", checkEverySec: 30 });
+
     async function load() {
         setErr(null);
         try {
-            // Twój backend zwraca Page<TargetResponse>
             const page = await api("/api/targets?page=0&size=50");
             setItems(page.content || []);
         } catch (e) {
@@ -21,8 +24,24 @@ export default function Targets() {
         }
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    useEffect(() => { load(); }, []);
+    useEffect(() => {
+        let cancelled = false;
+
+        (async () => {
+            setErr(null);
+            try {
+                const page = await api("/api/targets?page=0&size=50");
+                if (!cancelled) setItems(page.content || []);
+            } catch (e) {
+                if (!cancelled) setErr(e.message);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
 
     async function create(e) {
         e.preventDefault();
@@ -30,19 +49,17 @@ export default function Targets() {
         try {
             await api("/api/targets", {
                 method: "POST",
-                body: JSON.stringify({ name, url, enabled, checkEverySec: Number(checkEverySec) }),
+                body: JSON.stringify({
+                    name,
+                    url,
+                    enabled,
+                    checkEverySec: Number(checkEverySec),
+                }),
             });
-            setName(""); setUrl(""); setEnabled(true); setCheckEverySec(30);
-            await load();
-        } catch (e) {
-            setErr(e.message);
-        }
-    }
-
-    async function del(id) {
-        if (!confirm("Delete target?")) return;
-        try {
-            await api(`/api/targets/${id}`, { method: "DELETE" });
+            setName("");
+            setUrl("");
+            setEnabled(true);
+            setCheckEverySec(30);
             await load();
         } catch (e) {
             setErr(e.message);
@@ -69,14 +86,65 @@ export default function Targets() {
         }
     }
 
+    async function del(id) {
+        if (!confirm("Permanently delete target and all results?")) return;
+        try {
+            await api(`/api/targets/${id}`, { method: "DELETE" });
+            await load();
+        } catch (e) {
+            setErr(e.message);
+        }
+    }
+
+    function startEdit(t) {
+        setErr(null);
+        setEditingId(t.id);
+        setDraft({
+            name: t.name ?? "",
+            checkEverySec: t.checkEverySec ?? 30,
+        });
+    }
+
+    function cancelEdit() {
+        setEditingId(null);
+        setDraft({ name: "", checkEverySec: 30 });
+    }
+
+    async function saveEdit(id) {
+        setErr(null);
+        try {
+            await api(`/api/targets/${id}`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    name: draft.name,
+                    checkEverySec: Number(draft.checkEverySec),
+                }),
+            });
+            cancelEdit();
+            await load();
+        } catch (e) {
+            setErr(e.message);
+        }
+    }
+
     return (
-        <div style={{ maxWidth: 900, margin: "30px auto", padding: 20 }}>
-            <section style={{ marginTop: 20, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
-                <h3>Add target</h3>
-                <form onSubmit={create} style={{ display: "grid", gap: 10 }}>
+        <div style={{ maxWidth: 980 }}>
+            <h2 style={{ marginTop: 0 }}>Targets</h2>
+
+            {err && <div style={{ color: "crimson", marginTop: 8 }}>{err}</div>}
+
+            <section style={{ marginTop: 14, padding: 16, border: "1px solid #eee", borderRadius: 12 }}>
+                <h3 style={{ marginTop: 0 }}>Add target</h3>
+                <form onSubmit={create} style={{ display: "grid", gap: 10, maxWidth: 520 }}>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" required />
                     <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.org" required />
-                    <input type="number" min="10" max="86400" value={checkEverySec} onChange={(e) => setCheckEverySec(e.target.value)} />
+                    <input
+                        type="number"
+                        min="10"
+                        max="86400"
+                        value={checkEverySec}
+                        onChange={(e) => setCheckEverySec(e.target.value)}
+                    />
                     <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
                         enabled
@@ -85,37 +153,102 @@ export default function Targets() {
                 </form>
             </section>
 
-            <section style={{ marginTop: 20 }}>
+            <section style={{ marginTop: 18 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3>Targets</h3>
+                    <h3 style={{ margin: 0 }}>Your targets</h3>
                     <button onClick={load}>Refresh</button>
                 </div>
 
-                {err && <div style={{ color: "crimson", marginTop: 8 }}>{err}</div>}
-
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                    {items.map(t => (
-                        <div key={t.id} style={{ padding: 12, border: "1px solid #eee", borderRadius: 12, display: "flex", justifyContent: "space-between", gap: 12 }}>
-                            <div>
-                                <div><b>{t.name}</b></div>
-                                <div style={{ opacity: 0.8 }}>{t.url}</div>
-                                <div style={{ opacity: 0.8 }}>enabled: {String(t.enabled)} • every: {t.checkEverySec}s</div>
+                    {items.map((t) => {
+                        const isEditing = editingId === t.id;
+
+                        return (
+                            <div
+                                key={t.id}
+                                style={{
+                                    padding: 12,
+                                    border: "1px solid #eee",
+                                    borderRadius: 12,
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    gap: 12,
+                                    alignItems: "flex-start",
+                                }}
+                            >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    {!isEditing ? (
+                                        <>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                                <b>{t.name}</b>
+                                                <span
+                                                    style={{
+                                                        display: "inline-block",
+                                                        padding: "4px 10px",
+                                                        borderRadius: 999,
+                                                        fontSize: 12,
+                                                        fontWeight: 700,
+                                                        background: t.enabled ? "#16a34a" : "#dc2626",
+                                                        color: "#fff",
+                                                    }}
+                                                >
+                          {t.enabled ? "Active" : "Frozen"}
+                        </span>
+                                            </div>
+                                            <div style={{ opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                {t.url}
+                                            </div>
+                                            <div style={{ opacity: 0.75, marginTop: 2 }}>
+                                                every: <b>{t.checkEverySec}</b>s
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ display: "grid", gap: 8, maxWidth: 520 }}>
+                                            <input
+                                                value={draft.name}
+                                                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                                                placeholder="name"
+                                            />
+                                            <input
+                                                type="number"
+                                                min="10"
+                                                max="86400"
+                                                value={draft.checkEverySec}
+                                                onChange={(e) => setDraft((d) => ({ ...d, checkEverySec: e.target.value }))}
+                                                placeholder="checkEverySec"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    {!isEditing ? (
+                                        <>
+                                            <button onClick={() => startEdit(t)}>Edit</button>
+
+                                            <button
+                                                onClick={() => (t.enabled ? freeze(t.id) : unfreeze(t.id))}
+                                                style={{
+                                                    background: t.enabled ? "#16a34a" : "#dc2626",
+                                                    color: "#fff",
+                                                    border: "none",
+                                                }}
+                                            >
+                                                {t.enabled ? "Freeze" : "Activate"}
+                                            </button>
+
+                                            <button onClick={() => del(t.id)}>Delete</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => saveEdit(t.id)}>Save</button>
+                                            <button onClick={cancelEdit}>Cancel</button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                            <div style={{ display: "flex", gap: 8 }}>
-                                <button
-                                    onClick={() => t.enabled ? freeze(t.id) : unfreeze(t.id)}
-                                    style={{
-                                        background: t.enabled ? "#16a34a" : "#dc2626",
-                                        color: "#fff",
-                                        border: "none"
-                                    }}
-                                >
-                                    {t.enabled ? "Active" : "Frozen"}
-                                </button>
-                                <button onClick={() => del(t.id)}>Delete</button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </section>
         </div>
