@@ -40,7 +40,7 @@ export default function Targets() {
     }
 
     async function del(id) {
-        if (!confirm("Usunąć target?")) return;
+        if (!confirm("Delete target?")) return;
         try {
             await api(`/api/targets/${id}`, { method: "DELETE" });
             await load();
@@ -59,10 +59,20 @@ export default function Targets() {
         }
     }
 
+    async function unfreeze(id) {
+        if (!confirm("Unfreeze target?")) return;
+        try {
+            await api(`/api/targets/${id}/unfreeze`, { method: "PUT" });
+            await load();
+        } catch (e) {
+            setErr(e.message);
+        }
+    }
+
     return (
         <div style={{ maxWidth: 900, margin: "30px auto", padding: 20 }}>
             <section style={{ marginTop: 20, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
-                <h3>Dodaj target</h3>
+                <h3>Add target</h3>
                 <form onSubmit={create} style={{ display: "grid", gap: 10 }}>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" required />
                     <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.org" required />
@@ -92,7 +102,16 @@ export default function Targets() {
                                 <div style={{ opacity: 0.8 }}>enabled: {String(t.enabled)} • every: {t.checkEverySec}s</div>
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
-                                <button onClick={() => freeze(t.id)}>Freeze</button>
+                                <button
+                                    onClick={() => t.enabled ? freeze(t.id) : unfreeze(t.id)}
+                                    style={{
+                                        background: t.enabled ? "#fff" : "#dc2626",
+                                        color: t.enabled ? "#111" : "#fff",
+                                        border: "1px solid #e5e5e5"
+                                    }}
+                                >
+                                    {t.enabled ? "Freeze" : "Frozen"}
+                                </button>
                                 <button onClick={() => del(t.id)}>Delete</button>
                             </div>
                         </div>
