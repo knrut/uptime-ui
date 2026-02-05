@@ -1,21 +1,25 @@
 export async function api(path, options = {}) {
     const res = await fetch(path, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
         ...options,
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-        },
-        credentials: "include", // sesja/cookie
     });
 
-    if (res.status === 204) return null;
-
-    if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || `HTTP ${res.status}`);
+    const text = await res.text();
+    let data = null;
+    try {
+        data = text ? JSON.parse(text) : null;
+        // eslint-disable-next-line no-unused-vars
+    } catch (e) {
+        // ignore invalid JSON
     }
 
-    const ct = res.headers.get("content-type") || "";
-    if (ct.includes("application/json")) return res.json();
-    return res.text();
+    if (!res.ok) {
+        if (res.status === 401) {
+            throw new Error("Username or password are not valid");
+        }
+        throw new Error(data?.message || `Request failed (${res.status})`);
+    }
+
+    return data;
 }
