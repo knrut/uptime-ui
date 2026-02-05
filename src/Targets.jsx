@@ -162,7 +162,6 @@ export default function Targets() {
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                     {items.map((t) => {
                         const isEditing = editingId === t.id;
-
                         return (
                             <div
                                 key={t.id}
@@ -181,19 +180,21 @@ export default function Targets() {
                                         <>
                                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                                 <b>{t.name}</b>
-                                                <span
+                                                <button
+                                                    onClick={() => (t.enabled ? freeze(t.id) : unfreeze(t.id))}
                                                     style={{
-                                                        display: "inline-block",
-                                                        padding: "4px 10px",
+                                                        padding: "4px 12px",
                                                         borderRadius: 999,
                                                         fontSize: 12,
                                                         fontWeight: 700,
+                                                        border: "none",
+                                                        cursor: "pointer",
                                                         background: t.enabled ? "#16a34a" : "#dc2626",
                                                         color: "#fff",
                                                     }}
                                                 >
-                          {t.enabled ? "Active" : "Frozen"}
-                        </span>
+                                                    {t.enabled ? "Active" : "Frozen"}
+                                                </button>
                                             </div>
                                             <div style={{ opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                 {t.url}
@@ -220,23 +221,10 @@ export default function Targets() {
                                         </div>
                                     )}
                                 </div>
-
-                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
                                     {!isEditing ? (
                                         <>
                                             <button onClick={() => startEdit(t)}>Edit</button>
-
-                                            <button
-                                                onClick={() => (t.enabled ? freeze(t.id) : unfreeze(t.id))}
-                                                style={{
-                                                    background: t.enabled ? "#16a34a" : "#dc2626",
-                                                    color: "#fff",
-                                                    border: "none",
-                                                }}
-                                            >
-                                                {t.enabled ? "Freeze" : "Activate"}
-                                            </button>
-
                                             <button onClick={() => del(t.id)}>Delete</button>
                                         </>
                                     ) : (
