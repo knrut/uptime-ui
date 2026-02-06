@@ -11,36 +11,31 @@ export default function Targets() {
     const [checkEverySec, setCheckEverySec] = useState(30);
     const [fieldErrors, setFieldErrors] = useState({});
 
+    const [page, setPage] = useState(0);
+    const [size] = useState(10);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+
     // inline edit
     const [editingId, setEditingId] = useState(null);
     const [draft, setDraft] = useState({ name: "", checkEverySec: 30 });
 
-    async function load() {
+    async function load(p = page) {
         setErr(null);
         try {
-            const page = await api("/api/targets?page=0&size=50");
-            setItems(page.content || []);
+            const resp = await api(`/api/targets?page=${p}&size=${size}`);
+            setItems(resp.content || []);
+            setTotalPages(resp.totalPages ?? 0);
+            setTotalElements(resp.totalElements ?? 0);
+            setPage(resp.number ?? p);
         } catch (e) {
             setErr(e.message);
         }
     }
 
     useEffect(() => {
-        let cancelled = false;
-
-        (async () => {
-            setErr(null);
-            try {
-                const page = await api("/api/targets?page=0&size=50");
-                if (!cancelled) setItems(page.content || []);
-            } catch (e) {
-                if (!cancelled) setErr(e.message);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
+        load(0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
 
@@ -62,7 +57,7 @@ export default function Targets() {
             setUrl("");
             setEnabled(true);
             setCheckEverySec(30);
-            await load();
+            await load(0);
         } catch (e) {
             setErr(e.data?.message || e.message);
             setFieldErrors(e.data?.fields || {});
@@ -73,7 +68,7 @@ export default function Targets() {
         if (!confirm("Freeze target?")) return;
         try {
             await api(`/api/targets/${id}/freeze`, { method: "PUT" });
-            await load();
+            await load(page);
         } catch (e) {
             setErr(e.message);
         }
@@ -83,7 +78,7 @@ export default function Targets() {
         if (!confirm("Activate target?")) return;
         try {
             await api(`/api/targets/${id}/unfreeze`, { method: "PUT" });
-            await load();
+            await load(page);
         } catch (e) {
             setErr(e.message);
         }
@@ -93,7 +88,7 @@ export default function Targets() {
         if (!confirm("Permanently delete target and all results?")) return;
         try {
             await api(`/api/targets/${id}`, { method: "DELETE" });
-            await load();
+            await load(Math.max(0, page - 1));
         } catch (e) {
             setErr(e.message);
         }
@@ -124,7 +119,7 @@ export default function Targets() {
                 }),
             });
             cancelEdit();
-            await load();
+            await load(page);
         } catch (e) {
             setErr(e.message);
         }
@@ -171,6 +166,24 @@ export default function Targets() {
                     <button onClick={load}>Refresh</button>
                 </div>
 
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <button onClick={() => load(Math.max(0, page - 1))} disabled={page <= 0}>Prev</button>
+                    <div style={{ fontSize: 13, opacity: 0.75 }}>
+                        {totalPages > 0
+                            ? <>Page <b>{page + 1}</b> / <b>{totalPages}</b> · Total: <b>{totalElements}</b></>
+                            : <>Total: <b>{totalElements}</b></>
+                        }
+                    </div>
+                    <button
+                        onClick={() => {
+                            if (totalPages <= 0) return;
+                            load(Math.min(totalPages - 1, page + 1));
+                        }}
+                        disabled={page >= totalPages - 1}
+                    >
+                        Next
+                    </button>
+                </div>
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                     {items.map((t) => {
                         const isEditing = editingId === t.id;
