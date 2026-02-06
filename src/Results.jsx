@@ -21,8 +21,13 @@ export default function Results() {
     const [loadingResults, setLoadingResults] = useState(false);
     const [err, setErr] = useState(null);
 
+    // Filters (backend-driven)
+    const [statusFilter, setStatusFilter] = useState("ALL"); // ALL | UP | DOWN
+    const [latencyMin, setLatencyMin] = useState("");
+    const [latencyMax, setLatencyMax] = useState("");
+
     const selectedTarget = useMemo(
-        () => targets.find(t => String(t.id) === String(selectedTargetId)),
+        () => targets.find((t) => String(t.id) === String(selectedTargetId)),
         [targets, selectedTargetId]
     );
 
@@ -30,11 +35,11 @@ export default function Results() {
         setErr(null);
         setLoadingTargets(true);
         try {
-            const page = await api("/api/targets?page=0&size=50");
-            const list = page.content || [];
+            const resp = await api("/api/targets?page=0&size=50");
+            const list = resp.content || [];
             setTargets(list);
 
-            // auto-select pierwszy target (jeśli użytkownik jeszcze nic nie wybrał)
+            // auto-select first target if none selected
             if (!selectedTargetId && list.length > 0) {
                 setSelectedTargetId(String(list[0].id));
             }
@@ -47,10 +52,23 @@ export default function Results() {
 
     async function loadResults(targetId, p = page) {
         if (!targetId) return;
+
         setErr(null);
         setLoadingResults(true);
+
         try {
-            const resp = await api(`/api/results?targetId=${targetId}&page=${p}&size=${size}`);
+            const params = new URLSearchParams({
+                targetId: String(targetId),
+                page: String(p),
+                size: String(size),
+            });
+
+            if (statusFilter !== "ALL") params.set("status", statusFilter);
+            if (latencyMin !== "") params.set("latencyMin", String(latencyMin));
+            if (latencyMax !== "") params.set("latencyMax", String(latencyMax));
+
+            const resp = await api(`/api/results?${params.toString()}`);
+
             setResults(resp.content || []);
             setTotalPages(resp.totalPages ?? 0);
             setTotalElements(resp.totalElements ?? 0);
@@ -58,43 +76,51 @@ export default function Results() {
         } catch (e) {
             setErr(e.message || "Failed to load results");
             setResults([]);
+            setTotalPages(0);
+            setTotalElements(0);
         } finally {
             setLoadingResults(false);
         }
     }
 
-
-    // 1) wczytaj targety po wejściu na stronę
+    // Load targets on mount
     useEffect(() => {
         loadTargets();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // 2) jak zmieni się selectedTargetId, wczytaj wyniki
+    // Load results when target changes (reset to first page)
     useEffect(() => {
-        if (selectedTargetId) {
-            setPage(0);
-            loadResults(selectedTargetId, 0);
-        }
+        if (!selectedTargetId) return;
+        setPage(0);
+        loadResults(selectedTargetId, 0);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedTargetId]);
 
+    // Reload results when filters change (reset to first page)
+    useEffect(() => {
+        if (!selectedTargetId) return;
+        setPage(0);
+        loadResults(selectedTargetId, 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter, latencyMin, latencyMax]);
+
     return (
-        <div style={{maxWidth: 980}}>
-            <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12}}>
+        <div style={{ maxWidth: 980 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                    <h2 style={{margin: 0}}>Results</h2>
-                    <div style={{opacity: 0.7, marginTop: 4}}>
+                    <h2 style={{ margin: 0 }}>Results</h2>
+                    <div style={{ opacity: 0.7, marginTop: 4 }}>
                         {selectedTarget ? `Target: ${selectedTarget.name}` : "Select a target to see check results."}
                     </div>
                 </div>
 
-                <div style={{display: "flex", gap: 10, alignItems: "center"}}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <select
                         value={selectedTargetId}
                         onChange={(e) => setSelectedTargetId(e.target.value)}
                         disabled={loadingTargets || targets.length === 0}
-                        style={{padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", minWidth: 240}}
+                        style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", minWidth: 240 }}
                     >
                         {targets.length === 0 ? (
                             <option value="">No targets</option>
@@ -107,21 +133,16 @@ export default function Results() {
                         )}
                     </select>
 
-                    <div style={{display: "flex", gap: 10, alignItems: "center"}}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                         <button
                             onClick={() => loadResults(selectedTargetId, Math.max(0, page - 1))}
                             disabled={!selectedTargetId || loadingResults || page <= 0}
-                            style={{
-                                padding: "10px 12px",
-                                borderRadius: 10,
-                                border: "1px solid #e5e5e5",
-                                background: "#fff"
-                            }}
+                            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", background: "#fff" }}
                         >
                             Prev
                         </button>
 
-                        <div style={{fontSize: 13, opacity: 0.75, minWidth: 180, textAlign: "center"}}>
+                        <div style={{ fontSize: 13, opacity: 0.75, minWidth: 180, textAlign: "center" }}>
                             {totalPages > 0 ? (
                                 <>
                                     Page <b>{page + 1}</b> / <b>{totalPages}</b> · Total: <b>{totalElements}</b>
@@ -139,12 +160,7 @@ export default function Results() {
                                 loadResults(selectedTargetId, Math.min(totalPages - 1, page + 1));
                             }}
                             disabled={!selectedTargetId || loadingResults || page >= totalPages - 1}
-                            style={{
-                                padding: "10px 12px",
-                                borderRadius: 10,
-                                border: "1px solid #e5e5e5",
-                                background: "#fff"
-                            }}
+                            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", background: "#fff" }}
                         >
                             Next
                         </button>
@@ -152,12 +168,7 @@ export default function Results() {
                         <button
                             onClick={() => selectedTargetId && loadResults(selectedTargetId, page)}
                             disabled={!selectedTargetId || loadingResults}
-                            style={{
-                                padding: "10px 12px",
-                                borderRadius: 10,
-                                border: "1px solid #e5e5e5",
-                                background: "#fff"
-                            }}
+                            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", background: "#fff" }}
                         >
                             Refresh
                         </button>
@@ -165,9 +176,49 @@ export default function Results() {
                 </div>
             </div>
 
-            {err && <div style={{marginTop: 12, color: "crimson"}}>{String(err)}</div>}
+            {/* Filters */}
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="ALL">All statuses</option>
+                    <option value="UP">UP</option>
+                    <option value="DOWN">DOWN</option>
+                </select>
 
-            <section style={{marginTop: 18, padding: 16, border: "1px solid #eee", borderRadius: 12}}>
+                <input
+                    type="number"
+                    placeholder="Min latency (ms)"
+                    value={latencyMin}
+                    onChange={(e) => setLatencyMin(e.target.value)}
+                    style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", width: 180 }}
+                />
+
+                <input
+                    type="number"
+                    placeholder="Max latency (ms)"
+                    value={latencyMax}
+                    onChange={(e) => setLatencyMax(e.target.value)}
+                    style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", width: 180 }}
+                />
+
+                <button
+                    onClick={() => {
+                        setStatusFilter("ALL");
+                        setLatencyMin("");
+                        setLatencyMax("");
+                    }}
+                    style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #e5e5e5", background: "#fff" }}
+                >
+                    Clear
+                </button>
+
+                <div style={{ fontSize: 13, opacity: 0.75, marginLeft: "auto" }}>
+                    Total: <b>{totalElements}</b>
+                </div>
+            </div>
+
+            {err && <div style={{ marginTop: 12, color: "crimson" }}>{String(err)}</div>}
+
+            <section style={{ marginTop: 18, padding: 16, border: "1px solid #eee", borderRadius: 12 }}>
                 {loadingTargets ? (
                     <div>Loading targets...</div>
                 ) : targets.length === 0 ? (
@@ -181,7 +232,7 @@ export default function Results() {
                 ) : results.length === 0 ? (
                     <div>No results for this target yet.</div>
                 ) : (
-                    <div style={{display: "grid", gap: 10}}>
+                    <div style={{ display: "grid", gap: 10 }}>
                         {results.map((r) => (
                             <div
                                 key={r.id}
@@ -190,36 +241,31 @@ export default function Results() {
                                     border: "1px solid #eee",
                                     borderRadius: 12,
                                     display: "grid",
-                                    gridTemplateColumns: "130px 100px 1fr",
+                                    gridTemplateColumns: "180px 100px 1fr",
                                     gap: 12,
                                     alignItems: "center",
                                 }}
                             >
-                                <div style={{fontSize: 12, opacity: 0.75, whiteSpace: "nowrap"}}>{fmtDate(r.createdAt)}</div>
+                                <div style={{ fontSize: 12, opacity: 0.75, whiteSpace: "nowrap" }}>{fmtDate(r.createdAt)}</div>
 
                                 <div>
-                <span
-                    style={{
-                        display: "inline-block",
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        background: r.status === "UP" ? "#111" : "#dc2626",
-                        color: "#fff",
-                    }}
-                >
-                  {r.status}
-                </span>
+                  <span
+                      style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          background: r.status === "UP" ? "#111" : "#dc2626",
+                          color: "#fff",
+                      }}
+                  >
+                    {r.status}
+                  </span>
                                 </div>
 
-                                <div style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    gap: 12,
-                                    flexWrap: "wrap"
-                                }}>
-                                    <div style={{opacity: 0.85}}>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                    <div style={{ opacity: 0.85 }}>
                                         Latency: <b>{r.latencyMs ?? "-"}</b> ms
                                     </div>
 
@@ -236,7 +282,7 @@ export default function Results() {
                                             {r.errorMsg}
                                         </div>
                                     ) : (
-                                        <div style={{opacity: 0.6}}>No error</div>
+                                        <div style={{ opacity: 0.6 }}>No error</div>
                                     )}
                                 </div>
                             </div>
