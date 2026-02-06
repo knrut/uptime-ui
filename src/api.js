@@ -15,10 +15,15 @@ export async function api(path, options = {}) {
     }
 
     if (!res.ok) {
-        if (res.status === 401) {
-            throw new Error("Username or password are not valid");
-        }
-        throw new Error(data?.message || `Request failed (${res.status})`);
+        const err = new Error(
+            res.status === 401
+                ? "Username or password are not valid"
+                : data?.message || `Request failed (${res.status})`
+        );
+
+        err.status = res.status;
+        err.data = data; // { error, message, fields }
+        throw err;
     }
 
     return data;

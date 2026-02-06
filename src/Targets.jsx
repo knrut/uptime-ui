@@ -9,6 +9,7 @@ export default function Targets() {
     const [url, setUrl] = useState("");
     const [enabled, setEnabled] = useState(true);
     const [checkEverySec, setCheckEverySec] = useState(30);
+    const [fieldErrors, setFieldErrors] = useState({});
 
     // inline edit
     const [editingId, setEditingId] = useState(null);
@@ -46,6 +47,7 @@ export default function Targets() {
     async function create(e) {
         e.preventDefault();
         setErr(null);
+        setFieldErrors({});
         try {
             await api("/api/targets", {
                 method: "POST",
@@ -62,7 +64,8 @@ export default function Targets() {
             setCheckEverySec(30);
             await load();
         } catch (e) {
-            setErr(e.message);
+            setErr(e.data?.message || e.message);
+            setFieldErrors(e.data?.fields || {});
         }
     }
 
@@ -131,13 +134,21 @@ export default function Targets() {
         <div style={{ maxWidth: 980 }}>
             <h2 style={{ marginTop: 0 }}>Targets</h2>
 
-            {err && <div style={{ color: "crimson", marginTop: 8 }}>{err}</div>}
+
+            {(() => {
+                const hasFieldErrors = Object.keys(fieldErrors || {}).length > 0;
+                return err && !hasFieldErrors ? (
+                    <div style={{ color: "crimson", marginTop: 8 }}>{err}</div>
+                ) : null;
+            })()}
 
             <section style={{ marginTop: 14, padding: 16, border: "1px solid #eee", borderRadius: 12 }}>
                 <h3 style={{ marginTop: 0 }}>Add target</h3>
-                <form onSubmit={create} style={{ display: "grid", gap: 10, maxWidth: 520 }}>
+                <form onSubmit={create} noValidate style={{ display: "grid", gap: 10, maxWidth: 520 }}>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" required />
+                    {fieldErrors.name && <div style={{ color: "crimson", fontSize: 12 }}>{fieldErrors.name}</div>}
                     <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.org" required />
+                    {fieldErrors.url && <div style={{ color: "crimson", fontSize: 12 }}>{fieldErrors.url}</div>}
                     <input
                         type="number"
                         min="10"
@@ -145,6 +156,7 @@ export default function Targets() {
                         value={checkEverySec}
                         onChange={(e) => setCheckEverySec(e.target.value)}
                     />
+                    {fieldErrors.checkEverySec && <div style={{ color: "crimson", fontSize: 12 }}>{fieldErrors.checkEverySec}</div>}
                     <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
                         enabled
