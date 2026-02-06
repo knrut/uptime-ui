@@ -190,12 +190,12 @@ export default function Results() {
                                     border: "1px solid #eee",
                                     borderRadius: 12,
                                     display: "grid",
-                                    gridTemplateColumns: "120px 100px 1fr",
+                                    gridTemplateColumns: "130px 100px 1fr",
                                     gap: 12,
                                     alignItems: "center",
                                 }}
                             >
-                                <div style={{fontSize: 12, opacity: 0.75}}>{fmtDate(r.createdAt)}</div>
+                                <div style={{fontSize: 12, opacity: 0.75, whiteSpace: "nowrap"}}>{fmtDate(r.createdAt)}</div>
 
                                 <div>
                 <span
