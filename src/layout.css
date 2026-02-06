@@ -6,6 +6,9 @@
 }
 
 .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
     border-right: 1px solid #eee;
     padding: 18px;
     display: flex;
@@ -70,6 +73,7 @@
 }
 
 .content {
-    padding: 24px;
-    background: #fff;
+    height: 100vh;
+    overflow-y: auto;
 }
+
